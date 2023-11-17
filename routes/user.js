@@ -11,6 +11,7 @@ const userRouter = express.Router();
 userRouter.use(express.urlencoded({ extended: true }));
 
 userRouter.get("/verify/:token", verifyEmail);
+userRouter.get("/verifyopt/:opt", verifyEmail);
 userRouter.get("/getusers", getUser);
 userRouter.post("/login", login);
 userRouter.post("/getdetail", getDetail);

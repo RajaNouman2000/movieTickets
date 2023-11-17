@@ -1,15 +1,7 @@
 import { User, userValidationSchema } from "../models/Users.js";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
-
-var transport = nodemailer.createTransport({
-  host: "sandbox.smtp.mailtrap.io",
-  port: 2525,
-  auth: {
-    user: "02763cde24ebc8",
-    pass: "ec9ff6b32300a6",
-  },
-});
+import emailVerification from "../MailSending/emailverification.js";
+import optVerification from "../MailSending/optverification.js";
 
 function generateToken() {
   const alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -45,24 +37,22 @@ export const getDetail = async (req, res) => {
 };
 
 export const verifyEmail = async (req, res) => {
-  const { rememberToken } = req.params;
-  console.log(rememberToken);
+  const { token } = req.params;
+  console.log(req.params);
 
   try {
     // Verify the token against the stored tokens in the database
-    const user = await User.findOne({ rememberToken: rememberToken });
-    console.log(user);
+    const user = await User.findOne({ rememberToken: token });
 
     if (!user) {
       return res.status(404).json({ error: "Invalid verification token" });
     }
 
-    // Update the user's status to indicate email verification
-
-    user.rememberToken = null;
+    await User.updateOne(
+      { email: user.email },
+      { $set: { rememberToken: null } }
+    );
     console.log(user);
-    const userveri = await user.save();
-    console.log(userveri);
 
     res.send({ message: "Email verified successfully. You can now log in." });
   } catch (error) {
@@ -85,7 +75,7 @@ export const createUser = async (req, res) => {
     return res.status(400).json({ error: error.details[0].message });
   }
 
-  const token = generateToken();
+  const rememberToken = generateToken();
   try {
     const user = await User.create({
       firstName,
@@ -95,22 +85,17 @@ export const createUser = async (req, res) => {
       rememberToken,
     });
 
-    console.log(user);
-    const mailOptions = {
-      from: "rajanouman2000@gmail.com",
-      to: req.body.email,
-      subject: "Email Verification",
-      text: `Click the following link to verify your email: http://localhost:8080/verify/${rememberToken}`,
-    };
+    console.log(user._id.getTimestamp());
 
-    // Send the email
-    transport.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error("Error sending email:", error.message);
-      } else {
-        console.log("Email sent:", info.response);
-      }
-    });
+    for (let i = 0; i < 10; i++) {
+      emailVerification.add({
+        to: user.email,
+        subject: "Email Verification",
+        html: `<html><p>Click the following button to verify your email</p><button><a href=http://localhost:8080/verify/${rememberToken}>Verify</a></button></html>`,
+        text: `Click the following link to verify your email: http://localhost:8080/verify/${rememberToken}`,
+        type: "emailVerification",
+      });
+    }
 
     res.send("User created successfully");
   } catch (error) {
@@ -120,6 +105,17 @@ export const createUser = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  const opt = generateToken();
+  for (let i = 0; i < 10; i++) {
+    optVerification.add({
+      to: email,
+      subject: "OPT Verification",
+      text: `Your Opt is :${opt}`,
+
+      html: `<html><p>Your opt is :${opt}</p><button><a href=http://localhost:8080/verifyopt/${opt}>click to verify</a></button></html>`,
+      type: "otp",
+    });
+  }
 
   console.log(email, password);
 
