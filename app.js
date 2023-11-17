@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import cron from "node-cron";
 import express from "express";
 import dotenv from "dotenv";
 import userRouter from "./routes/user.js";
@@ -7,6 +7,7 @@ import customerRouter from "./routes/customer.js";
 import genreRouter from "./routes/genre.js";
 import movieRouter from "./routes/movie.js";
 import rentalRouter from "./routes/rental.js";
+import getWeather from "./controller/weather.js";
 
 // Load environment variables from .env file
 const result = dotenv.config();
@@ -27,6 +28,16 @@ app.use("/", rentalRouter);
 
 // Middleware to parse JSON data from the request body
 app.use(express.json());
+
+cron.schedule("*/15 * * * *", async () => {
+  console.log("Running cron job...");
+  try {
+    const weatherData = await getWeather();
+    console.log("Weather data:", weatherData);
+  } catch (error) {
+    console.error("Error in cron job:", error);
+  }
+});
 
 mongoose
   .connect(dbURI)
